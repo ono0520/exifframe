@@ -1,0 +1,48 @@
+.language-picker { width: 100%; min-width: 0; margin-top: 16px; }
+.language-trigger {
+  display: flex; justify-content: space-between; align-items: center; gap: 12px;
+  width: 100%; min-height: 44px; padding: 10px 12px;
+  border: 1px solid #526579; border-radius: 8px;
+  background: #172532; color: #fff; font: 600 16px/1.5 system-ui, sans-serif;
+  white-space: normal; cursor: pointer;
+}
+.language-trigger::after { content: '+'; flex-shrink: 0; }
+.language-trigger[aria-expanded='true']::after { content: '−'; }
+.language-options { display: grid; gap: 4px; margin-top: 6px; }
+.language-options[hidden] { display: none; }
+.language-options a {
+  display: block; width: 100%; min-width: 0; min-height: 44px;
+  margin: 0; padding: 10px 12px; border: 1px solid transparent; border-radius: 6px;
+  background: #202d38; color: #fff; text-decoration: none;
+  font: 400 16px/1.5 system-ui, sans-serif;
+  white-space: normal; overflow-wrap: anywhere; text-overflow: clip; overflow: visible;
+}
+.language-options a[aria-current='true'] { border-color: #64b5ff; background: #22415a; font-weight: 700; }
+.language-options a[aria-current='true']::after { content: ' ✓'; }
+.language-trigger:focus-visible, .language-options a:focus-visible { outline: 2px solid #64b5ff; outline-offset: 2px; }
+.hamburger-menu-drawer, .mobile-menu { overflow-y: auto; }
+.language-picker-desktop { display: none; }
+@media (min-width: 761px) {
+  .site-header > .language-picker-desktop { display: block; }
+}
+.hamburger-menu-drawer .menu-home-link,
+.hamburger-menu-drawer .mobile-zip-secondary,
+.hamburger-menu-drawer .language-trigger,
+.hamburger-menu-drawer .language-options a {
+  text-align: left;
+  padding-inline: 14px;
+}
+.language-picker-desktop {
+  position: relative; flex: 0 0 auto; width: auto; margin: 0;
+}
+.language-picker-desktop .language-trigger {
+  width: auto; min-height: 30px; padding: 4px 8px;
+  font-size: 12px; font-weight: 500; gap: 8px;
+}
+.language-picker-desktop .language-options {
+  position: absolute; z-index: 200; right: 0; top: 100%;
+  width: 200px; max-width: calc(100vw - 28px); padding: 6px;
+  border: 1px solid #526579; border-radius: 8px; background: #172532;
+  box-shadow: 0 8px 24px rgba(0,0,0,.35);
+}
+.language-picker-desktop .language-options a { font-size: 13px; }

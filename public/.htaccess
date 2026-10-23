@@ -1,0 +1,38 @@
+Options -Indexes
+AddDefaultCharset UTF-8
+DirectoryIndex index.html
+ErrorDocument 404 /404.html
+
+<IfModule mod_rewrite.c>
+RewriteEngine On
+RewriteCond %{HTTPS} !=on
+RewriteRule ^ https://exifframe.net%{REQUEST_URI} [R=301,L]
+RewriteCond %{HTTP_HOST} ^www\.exifframe\.net$ [NC]
+RewriteRule ^ https://exifframe.net%{REQUEST_URI} [R=301,L]
+RewriteRule ^(?:config|tools|assets/images/brand/sources)(?:/|$) - [F,L]
+
+# お問い合わせフォーム: contact.html宛のアクセス・送信をcontact.phpに内部転送する
+# (トップと各言語フォルダのcontact.htmlの両方に対応)
+RewriteRule ^contact\.html$ contact.php [L]
+RewriteRule ^(en|ko|es|zh-cn|pt-br)/contact\.html$ contact.php [L]
+</IfModule>
+
+<IfModule mod_headers.c>
+Header always set Strict-Transport-Security "max-age=31536000" env=HTTPS
+Header always set X-Content-Type-Options "nosniff"
+Header always set X-Frame-Options "DENY"
+Header always set Referrer-Policy "no-referrer"
+Header always set Permissions-Policy "camera=(), microphone=(), geolocation=()"
+Header always set Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data: blob:; font-src 'self'; connect-src 'none'; object-src 'none'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'; worker-src 'self' blob:"
+</IfModule>
+
+<FilesMatch "(?i)(\.(?:md|mjs|cjs|bak|old|orig|log|ini|env|zip|sql)$|^\.)">
+Require all denied
+</FilesMatch>
+
+<FilesMatch "^contact\.php$">
+LimitRequestBody 65536
+<IfModule mod_headers.c>
+Header always set Cache-Control "no-store, private"
+</IfModule>
+</FilesMatch>

@@ -1,0 +1,8 @@
+/* Allow translated copy to fit without altering the editor or Japanese page. */
+.hero { grid-template-columns: minmax(0, 1.08fr) minmax(0, .92fr); }
+.hero h1 { white-space: normal; text-wrap: balance; overflow-wrap: break-word; }
+.lead, .privacy-note { overflow-wrap: break-word; }
+.steps span { display: inline-block; }
+@media (max-width: 760px) {
+  .hero { grid-template-columns: minmax(0, 1fr); }
+}
