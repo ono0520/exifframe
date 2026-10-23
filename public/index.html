@@ -1,0 +1,417 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <!-- ===== Google Analytics / GA4 START | Measurement ID: G-NVSNLSTB67 ===== -->
+    <!-- Google tag (gtag.js) -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-NVSNLSTB67"></script>
+    <script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-NVSNLSTB67');
+</script>
+    <!-- ===== Google Analytics / GA4 END ===== -->
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="description" content="写真にカメラ名や撮影情報を添えて保存できる、無料・登録不要のExifFrame編集画面です。">
+    <link rel="canonical" href="https://exifframe.net/"><link rel="alternate" hreflang="ja" href="https://exifframe.net/"><link rel="alternate" hreflang="en" href="https://exifframe.net/en/"><link rel="alternate" hreflang="ko" href="https://exifframe.net/ko/"><link rel="alternate" hreflang="es" href="https://exifframe.net/es/"><link rel="alternate" hreflang="zh-Hans" href="https://exifframe.net/zh-cn/"><link rel="alternate" hreflang="pt-BR" href="https://exifframe.net/pt-br/"><link rel="alternate" hreflang="x-default" href="https://exifframe.net/en/">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-dD3xgrVPM0Us/L9FE3O3EO5UAXzONSvyexZSN+QeFXY=' https://*.googletagmanager.com; style-src 'self'; img-src 'self' blob: data: https://*.google-analytics.com https://*.googletagmanager.com; font-src 'self'; connect-src 'self' https://*.google-analytics.com https://*.analytics.google.com https://*.googletagmanager.com; object-src 'none'; base-uri 'none'; form-action 'self'; worker-src 'self' blob:;">
+    <meta name="referrer" content="no-referrer">
+    <title>ExifFrame｜写真に撮影情報をフレームとして追加(無料)</title>
+    <!-- 外部ライブラリ: EXIFデータ解析用 -->
+    <script src="assets/vendor/exifr-7.1.3-full.umd.js"></script>
+    <!-- 外部ライブラリ: ZIPファイル作成用 -->
+    <script src="assets/vendor/jszip-3.10.1.min.js"></script>
+    <!-- スタイルシートの読み込み -->
+    <link rel="stylesheet" href="assets/css/style.css?v=40">
+<link rel="stylesheet" href="assets/css/mobile-refinements.css?v=52"><link rel="stylesheet" href="assets/css/language-menu.css?v=46"><link rel="stylesheet" href="assets/css/brand.css?v=47"><link rel="icon" type="image/png" sizes="32x32" href="assets/images/brand/favicon-32.png?v=48"><link rel="icon" type="image/png" sizes="192x192" href="assets/images/brand/favicon-192.png?v=48"><link rel="apple-touch-icon" sizes="180x180" href="assets/images/brand/favicon-180.png?v=48"></head>
+<body>
+
+    <div class="app-container">
+        
+        <!-- ヘッダーエリア -->
+        <header class="app-header">
+            <a class="app-title" href="index.html" aria-label="ExifFrame.net 写真編集画面"><img class="site-brand-icon" src="assets/images/brand/site-icon.svg" alt="" width="28" height="28"><strong>ExifFrame.net</strong><small>写真編集</small></a>
+            <div class="header-actions">
+                <button type="button" id="add-photos-button" class="header-button primary-action">＋ 写真を追加</button>
+                <input type="file" id="multiple-photo-input" multiple accept="image/jpeg, image/png, image/webp" hidden>
+                <button type="button" id="share-current-button" class="header-button desktop-secondary-action">共有</button>
+                <button type="button" id="download-current-button" class="header-button desktop-secondary-action">写真を保存</button>
+                <button type="button" id="download-zip-button" class="header-button primary-action desktop-zip-action">一括ダウンロード</button>
+                <button type="button" id="hamburger-menu-button" class="hamburger-button" aria-label="メニューを開く" aria-expanded="false">☰</button>
+            </div>
+        </header>
+
+        <!-- メインコンテンツエリア -->
+        <div class="app-main-content">
+            <aside class="filmstrip-footer-section" aria-label="写真一覧">
+                <button type="button" id="filmstrip-resizer" hidden aria-hidden="true"></button>
+                <div class="filmstrip-heading"><strong>写真一覧</strong><span id="photo-count-label" class="photo-count-label">0枚</span></div>
+                <label class="filmstrip-select-all" title="対象写真を全選択・全解除">
+                    <input type="checkbox" id="filmstrip-select-all-checkbox">
+                    <span id="filmstrip-master-label">連動対象を全選択</span>
+                </label>
+                <div class="filmstrip-mode-actions" role="group" aria-label="写真一覧の操作モード">
+                    <button type="button" id="link-mode-button" class="active" aria-pressed="true"><span aria-hidden="true">🔗</span> 連動</button>
+                    <button type="button" id="delete-mode-button" aria-pressed="false"><span aria-hidden="true">🗑</span> 削除</button>
+                </div>
+                <div id="filmstrip-container" class="filmstrip-container"></div>
+                <button type="button" id="batch-delete-button" class="batch-delete-button" hidden>選択した写真を削除</button>
+            </aside>
+
+            <!-- 中央：プレビューエリア -->
+            <section class="main-preview-section">
+                <!-- アスペクト比切り替えボタン（1:1と元サイズのみに整理） -->
+                <div class="aspect-tab-group">
+                    <button type="button" class="tab-button active" data-aspect="original">元サイズ</button>
+                    <button type="button" class="tab-button" data-aspect="1:1">1:1</button>
+                    <label class="portrait-aspect-control"><span>フレーム</span><select id="portrait-aspect-select" aria-label="フレーム"><option value="original">元サイズ</option><option value="1:1">1:1</option></select></label>
+                    <button type="button" id="active-photo-mode-button" class="active-photo-mode-button" disabled>連動</button>
+                    <button type="button" id="preview-save-button" class="portrait-save-button" disabled>保存</button>
+                </div>
+
+                <!-- Canvas描画プレビューエリア -->
+                <div class="canvas-preview-wrapper">
+                    <canvas id="main-frame-canvas" tabindex="0"></canvas>
+                    <div id="snap-zone-overlay" class="snap-zone-overlay" aria-hidden="true"></div>
+                    <button type="button" id="mobile-photo-prev" class="mobile-photo-nav mobile-photo-prev" aria-label="前の写真" hidden>‹</button>
+                    <button type="button" id="mobile-photo-next" class="mobile-photo-nav mobile-photo-next" aria-label="次の写真" hidden>›</button>
+                </div>
+            </section>
+
+            <!-- 右側：設定＆操作パネルエリア -->
+            <aside id="control-panel-section" class="control-panel-section" aria-disabled="true">
+                <div class="panel-heading">
+                    <div>
+                        <p class="eyebrow">編集中のデザインを連動できます</p>
+                        <h2>詳細設定</h2>
+                    </div>
+                    <span id="active-photo-label" class="active-photo-label">写真を追加してください</span>
+                </div>
+                <div id="individual-edit-notice" class="individual-edit-notice" hidden>
+                    <p><strong>個別設定を編集中です。</strong>変更はほかの写真へ反映されません。</p>
+                    <div class="individual-edit-actions">
+                        <button type="button" id="restore-linked-settings-button">連動設定に戻す</button>
+                        <button type="button" id="apply-to-linked-button">この設定を連動写真へ反映</button>
+                    </div>
+                </div>
+                
+                <p id="editor-empty-message" class="editor-empty-message" role="status">写真を追加すると設定を編集できます。</p>
+
+                <form id="exif-edit-form" class="edit-form">
+                    <details class="settings-section" open>
+                    <summary>フレーム・アイコン</summary>
+                    <div class="settings-section-body">
+                    <!-- フレームの有無設定 -->
+                    <div class="form-group border-box">
+                        <label>フレーム（枠線・余白）設定：</label>
+                        <div class="color-selector">
+                            <label><input type="radio" name="frame-toggle" value="enable" checked> フレームあり</label>
+                            <label><input type="radio" name="frame-toggle" value="disable"> フレームなし</label>
+                        </div>
+                        <div id="frame-color-group" class="frame-color-inline">
+                            <label>フレームカラー：</label>
+                            <div class="color-selector">
+                            <label><input type="radio" name="frame-color" value="white"> ホワイト</label>
+                            <label><input type="radio" name="frame-color" value="black" checked> ブラック</label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- アイコン選択エリア -->
+                    <div class="form-group border-box icon-picker">
+                        <div class="icon-picker-copy">
+                            <strong>アイコン</strong>
+                            <span>機種名の横に表示できます</span>
+                        </div>
+                        <input type="file" id="custom-icon-file-input" accept="image/png, image/jpeg, image/webp" hidden>
+                        <div id="icon-empty-state" class="icon-empty-state">
+                            <button type="button" id="icon-add-button" class="btn-icon-action">＋ アイコンを追加</button>
+                            <small>PNG・JPEG・WebP（2MBまで）</small>
+                        </div>
+                        <div id="icon-selected-state" class="icon-selected-state hidden-element">
+                            <img id="icon-preview-image" alt="選択したアイコンのプレビュー">
+                            <span id="icon-file-name">アイコン</span>
+                            <button type="button" id="icon-change-button" class="btn-icon-action">変更</button>
+                            <button type="button" id="icon-remove-button" class="btn-icon-action danger">削除</button>
+                        </div>
+                    </div>
+
+                    <!-- アイコン位置・サイズ調整アコーディオン開閉ボタン -->
+                    <button type="button" id="toggle-icon-control-btn" class="btn-toggle-accordion hidden-element">
+                        ▼ アイコン位置・サイズを調整する
+                    </button>
+
+                    <!-- 折りたたみ調整パネル -->
+                    <div id="icon-control-panel" class="form-group border-box hidden-panel">
+                        <label for="icon-scale-slider">アイコンサイズ調整：</label>
+                        <div class="slider-group">
+                            <input type="range" id="icon-scale-slider" min="0.5" max="3.0" step="0.1" value="1.0">
+                            <span id="icon-scale-value-display">1.0x</span>
+                        </div>
+
+                        <label for="icon-offset-x-slider">左右位置：</label>
+                        <div class="slider-group">
+                            <input type="range" id="icon-offset-x-slider" min="-100" max="100" step="1" value="0">
+                            <span id="icon-offset-x-value">0</span>
+                        </div>
+                        <label for="icon-offset-y-slider">上下位置：</label>
+                        <div class="slider-group">
+                            <input type="range" id="icon-offset-y-slider" min="-100" max="100" step="1" value="0">
+                            <span id="icon-offset-y-value">0</span>
+                        </div>
+
+                        <details class="icon-fine-controls">
+                        <summary>数値ボタンで微調整</summary>
+                        <div class="dpad-controller">
+                            <button type="button" id="dpad-large-up-button" class="btn-dpad btn-dpad-large dpad-large-up" aria-label="上へ大きく移動">▲▲</button>
+                            <button type="button" id="dpad-up-button" class="btn-dpad dpad-up" aria-label="上へ微調整">▲</button>
+                            <button type="button" id="dpad-large-left-button" class="btn-dpad btn-dpad-large dpad-large-left" aria-label="左へ大きく移動">◀◀</button>
+                            <button type="button" id="dpad-left-button" class="btn-dpad dpad-left" aria-label="左へ微調整">◀</button>
+                            <button type="button" id="dpad-reset-button" class="btn-dpad dpad-reset" aria-label="位置とサイズをリセット">●</button>
+                            <button type="button" id="dpad-right-button" class="btn-dpad dpad-right" aria-label="右へ微調整">▶</button>
+                            <button type="button" id="dpad-large-right-button" class="btn-dpad btn-dpad-large dpad-large-right" aria-label="右へ大きく移動">▶▶</button>
+                            <button type="button" id="dpad-down-button" class="btn-dpad dpad-down" aria-label="下へ微調整">▼</button>
+                            <button type="button" id="dpad-large-down-button" class="btn-dpad btn-dpad-large dpad-large-down" aria-label="下へ大きく移動">▼▼</button>
+                        </div>
+                        </details>
+                    </div>
+                    </div>
+                    </details>
+
+                    <!-- フォント設定 -->
+                    <details class="settings-section" open>
+                    <summary>文字・配置</summary>
+                    <div class="settings-section-body settings-compact-grid">
+                    <div class="form-group">
+                        <label for="font-family-select">フォント選択：</label>
+                        <select id="font-family-select" class="form-control">
+                            <option value="art" selected>作品風：明朝体（おすすめ）</option>
+                            <option value="handwritten">手書き風：教科書体</option>
+                            <option value="sans-serif">ゴシック体（読みやすい）</option>
+                            <option value="monospace">等幅（撮影情報向け）</option>
+                            <option value="cursive">丸ゴシック（やわらかい印象）</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label><input type="checkbox" id="font-weight-toggle" checked> 太字にする</label>
+                    </div>
+
+                    <div id="no-frame-text-color-group" class="form-group hidden-element">
+                        <label>フレームなし時の文字色：</label>
+                        <div class="color-selector">
+                            <label><input type="radio" name="no-frame-text-color" value="white"> 白</label>
+                            <label><input type="radio" name="no-frame-text-color" value="black" checked> 黒</label>
+                            <label><input type="radio" name="no-frame-text-color" value="gray"> 灰</label>
+                        </div>
+                    </div>
+
+                    <!-- 文字方向・位置設定 -->
+                    <div class="form-group">
+                        <label for="writing-direction-select">文字方向：</label>
+                        <select id="writing-direction-select" class="form-control">
+                            <option value="horizontal" selected>横書き</option>
+                            <option value="vertical">縦書き</option>
+                        </select>
+                    </div>
+                    <div class="form-row">
+                        <div id="horizontal-position-group" class="form-group half">
+                            <label for="text-position-vertical-select">文字上下位置：</label>
+                            <select id="text-position-vertical-select" class="form-control">
+                                <option value="both">上下両方</option>
+                                <option value="bottom" selected>下部のみ</option>
+                                <option value="top">上部のみ</option>
+                            </select>
+                        </div>
+                        <div class="form-group half">
+                            <label id="alignment-label" for="text-position-horizontal-select">文字左右位置：</label>
+                            <select id="text-position-horizontal-select" class="form-control">
+                                <option value="center">中央揃え</option>
+                                <option value="left" selected>左揃え</option>
+                                <option value="right">右揃え</option>
+                            </select>
+                        </div>
+                    </div>
+                    <p id="vertical-writing-hint" class="field-hint hidden-element">縦書きでは、右上・右下・左上・左下から配置を選べます。</p>
+
+                    <div class="form-group text-position-adjuster">
+                        <label>文字位置の微調整：</label>
+                        <p class="touch-edit-hint">スマホ：1本指で移動し、表示された領域内で離すと配置位置へ吸着／2本指で文字サイズ変更／ダブルタップでリセット</p>
+                        <div class="position-slider-row">
+                            <label for="font-scale-slider">大きさ</label>
+                            <input type="range" id="font-scale-slider" min="0.5" max="2.5" step="0.05" value="1">
+                            <span id="font-scale-value">1.00x</span>
+                        </div>
+                        <div class="position-slider-row">
+                            <label for="camera-name-scale-slider">機種名</label>
+                            <input type="range" id="camera-name-scale-slider" min="0.7" max="2" step="0.05" value="1.1">
+                            <span id="camera-name-scale-value">1.10x</span>
+                        </div>
+                        <div class="position-slider-row">
+                            <label for="text-offset-x-slider">左右</label>
+                            <input type="range" id="text-offset-x-slider" min="-20" max="20" step="0.1" value="0">
+                            <span id="text-offset-x-value">0.0%</span>
+                        </div>
+                        <div class="position-slider-row">
+                            <label for="text-offset-y-slider">上下</label>
+                            <input type="range" id="text-offset-y-slider" min="-20" max="20" step="0.1" value="0">
+                            <span id="text-offset-y-value">0.0%</span>
+                        </div>
+                        <button type="button" id="text-offset-reset-button" class="btn-inline-reset">文字位置を中央値に戻す</button>
+                    </div>
+                    <details class="advanced-text-settings">
+                        <summary>詳細な文字色設定</summary>
+                        <div class="advanced-text-settings-body">
+                            <div class="form-group">
+                                <label for="prefix-text-color-select">冒頭文字の色：</label>
+                                <select id="prefix-text-color-select" class="form-control">
+                                    <option value="auto" selected>自動</option><option value="white">白</option><option value="black">黒</option><option value="gray">灰色</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="camera-text-color-select">機種名の色：</label>
+                                <select id="camera-text-color-select" class="form-control">
+                                    <option value="auto" selected>自動</option>
+                                    <option value="white">白</option>
+                                    <option value="black">黒</option>
+                                    <option value="gray">灰色</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="maker-text-color-select">メーカー名の色：</label>
+                                <select id="maker-text-color-select" class="form-control">
+                                    <option value="auto" selected>自動</option><option value="white">白</option><option value="black">黒</option><option value="gray">灰色</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="detail-text-color-select">その他設定の色：</label>
+                                <select id="detail-text-color-select" class="form-control">
+                                    <option value="auto" selected>自動</option>
+                                    <option value="white">白</option>
+                                    <option value="black">黒</option>
+                                    <option value="gray">灰色</option>
+                                </select>
+                            </div>
+                        </div>
+                    </details>
+                    </div>
+                    </details>
+
+                    <!-- カメラ・レンズ情報手動調整 -->
+                    <details class="settings-section">
+                    <summary>撮影情報</summary>
+                    <div class="settings-section-body settings-compact-grid">
+                    <h3 class="settings-subheading">機種</h3>
+                    <div class="form-group">
+                        <label for="camera-model-input">機種名：</label>
+                        <input type="text" id="camera-model-input" class="form-control" placeholder="例: α7 IV" maxlength="50">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="camera-maker-input">メーカー：</label>
+                        <input type="text" id="camera-maker-input" class="form-control" placeholder="例: SONY" maxlength="50">
+                    </div>
+
+                    <div class="form-group camera-prefix-setting">
+                        <label><input type="checkbox" id="camera-prefix-toggle" checked> 冒頭文字を表示</label>
+                        <input type="text" id="camera-prefix-input" class="form-control" value="Shot on" maxlength="30" placeholder="例: Shot on">
+                    </div>
+
+                    <h3 class="settings-subheading">撮影条件</h3>
+
+                    <div class="form-group">
+                        <label for="lens-model-input">レンズモデル：</label>
+                        <input type="text" id="lens-model-input" class="form-control" placeholder="例: FE 50mm F1.2 GM" maxlength="50">
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group half">
+                            <label for="f-number-input">F値：</label>
+                            <input type="text" id="f-number-input" class="form-control" placeholder="f/1.8" maxlength="10">
+                        </div>
+                        <div class="form-group half">
+                            <label for="shutter-speed-input">SS：</label>
+                            <input type="text" id="shutter-speed-input" class="form-control" placeholder="1/1000s" maxlength="10">
+                        </div>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group half">
+                            <label for="iso-speed-input">ISO：</label>
+                            <input type="text" id="iso-speed-input" class="form-control" placeholder="ISO 100" maxlength="10">
+                        </div>
+                        <div class="form-group half">
+                            <label for="focal-length-input">焦点距離：</label>
+                            <input type="text" id="focal-length-input" class="form-control" placeholder="50mm" maxlength="10">
+                        </div>
+                    </div>
+                    </div>
+                    </details>
+
+                </form>
+
+                <!-- ハッシュタグ生成エリア -->
+                <div class="hashtag-section">
+                    <h3>自動生成ハッシュタグ</h3>
+                    <textarea id="generated-hashtag-text" readonly rows="2" class="form-control"></textarea>
+                    <button type="button" id="copy-hashtag-button" class="btn-copy">ハッシュタグをコピー</button>
+                </div>
+                <div class="settings-save-area"><button type="button" id="settings-save-button" class="btn-primary" disabled>保存</button><p>写真を選んで保存・共有</p></div>
+            </aside>
+
+        </div>
+
+    </div>
+
+
+    <div id="hamburger-menu-panel" class="hamburger-menu-panel" aria-hidden="true">
+        <button type="button" id="hamburger-menu-backdrop" class="hamburger-menu-backdrop" aria-label="メニューを閉じる"></button>
+        <aside class="hamburger-menu-drawer" aria-label="メニュー">
+            <div class="hamburger-menu-heading"><strong>メニュー</strong><button type="button" id="hamburger-menu-close" aria-label="メニューを閉じる">×</button></div>
+            <a href="start.html" class="menu-home-link">初めての方へ</a>
+            <a href="guide.html" class="menu-home-link">使い方</a>
+            <a href="faq.html" class="menu-home-link">よくある質問</a>
+            <a href="contact.html" class="menu-home-link">お問い合わせ</a>
+            <button type="button" id="mobile-zip-button" class="mobile-zip-secondary">ZIPでまとめて保存</button>
+        </aside>
+    </div>
+
+    <!-- 通知表示用トーストメッセージボックス -->
+    <div id="notification-message-box" class="notification-box"></div>
+
+    <div id="media-selection-dialog" class="confirm-dialog media-selection-dialog" role="dialog" aria-modal="true" aria-labelledby="media-selection-title" aria-hidden="true">
+        <div class="media-selection-card">
+            <div class="media-selection-heading">
+                <div><h3 id="media-selection-title">写真を選択</h3><p id="media-selection-description">保存する写真を選んでください。</p></div>
+                <button type="button" id="media-selection-close" class="media-selection-close" aria-label="閉じる">×</button>
+            </div>
+            <label class="media-select-all"><input type="checkbox" id="media-select-all-checkbox"> すべて選択</label>
+            <div id="media-selection-list" class="media-selection-list"></div>
+            <p id="media-selection-note" class="media-selection-note"></p>
+            <div class="media-selection-actions">
+                <button type="button" id="media-selection-cancel" class="btn-secondary">キャンセル</button>
+                <button type="button" id="media-selection-share-submit" class="btn-secondary" hidden>共有</button>
+                <button type="button" id="media-selection-submit" class="btn-primary">選択した写真を保存</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="delete-confirm-dialog" class="confirm-dialog" role="dialog" aria-modal="true" aria-labelledby="delete-confirm-title" aria-hidden="true">
+        <div class="confirm-dialog-card">
+            <div class="confirm-dialog-icon">🗑</div>
+            <h3 id="delete-confirm-title">選択した写真を削除しますか？</h3>
+            <p id="delete-confirm-photo-name"></p>
+            <div class="confirm-dialog-actions">
+                <button type="button" id="delete-cancel-button" class="btn-secondary">キャンセル</button>
+                <button type="button" id="delete-confirm-button" class="btn-danger">削除</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- メイン処理JavaScriptの読み込み -->
+    <script src="assets/js/i18n.js?v=48"></script><script src="assets/js/brand-icons.js?v=47"></script><script src="assets/js/icon-picker.js?v=47"></script><script src="assets/js/main.js?v=47"></script><script src="assets/js/portrait-scroll.js?v=50"></script>
+</body>
+</html>

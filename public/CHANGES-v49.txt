@@ -1,0 +1,9 @@
+ExifFrame v49
+
+お問い合わせURLを contact.html に統一しました。
+- サイト内の公開リンクを contact.php から contact.html に統一
+- contact.html を canonical な公開URLとして使用
+- contact.html へのアクセスは .htaccess で contact.php に内部Rewriteし、フォーム処理は既存PHPを継続利用
+- 旧 contact.php への直接アクセスは contact.html へ301リダイレクト
+- フォームのPOST先も contact.html に統一
+- 多言語ページの contact.html URL構成は維持
