@@ -1,0 +1,99 @@
+# GitHubの public/ をロリポップの /exifframe.net に反映する
+# dry_run=true（初期値）: サーバーとの差分を表示するだけで、何も送らない
+# dry_run=false: 差分のあるファイルをアップロードする（サーバーにしかないファイルは消さない）。main からだけ実行できる
+# 必要なSecrets: FTP_SERVER / FTP_USERNAME / FTP_PASSWORD（SENDAIPLUSリポジトリと同じ値）
+name: ロリポップに反映
+
+on:
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: true=差分を見るだけ / false=実際にアップロード
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      FTP_SERVER: ${{ secrets.FTP_SERVER }}
+      FTP_USERNAME: ${{ secrets.FTP_USERNAME }}
+      FTP_PASSWORD: ${{ secrets.FTP_PASSWORD }}
+      REMOTE_DIR: /exifframe.net
+      EXCLUDES: >-
+        --exclude '(^|/)(\.storage|storage|sessions|cache)/'
+        --exclude '(^|/)\.DS_Store$'
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Secretsが登録されているか確認
+        run: |
+          if [ -z "$FTP_SERVER" ] || [ -z "$FTP_USERNAME" ] || [ -z "$FTP_PASSWORD" ]; then
+            echo "FTP_SERVER / FTP_USERNAME / FTP_PASSWORD をこのリポジトリの Secrets に登録してください"
+            exit 1
+          fi
+
+      - name: main以外からのアップロードを止める
+        if: inputs.dry_run == false && github.ref != 'refs/heads/main'
+        run: |
+          echo "アップロードは main からだけ実行できます（今: ${{ github.ref_name }}）"
+          exit 1
+
+      - name: lftpを入れる
+        run: sudo apt-get update && sudo apt-get install -y lftp
+
+      - name: サーバーの今の中身を取得
+        run: |
+          mkdir -p remote
+          lftp -u "$FTP_USERNAME","$FTP_PASSWORD" "$FTP_SERVER" -e "
+            set ftp:ssl-force true;
+            set ftp:ssl-protect-data true;
+            set ssl:verify-certificate yes;
+            set net:max-retries 3;
+            mirror --parallel=8 $EXCLUDES $REMOTE_DIR remote;
+            quit
+          "
+
+      - name: 差分を表示
+        run: |
+          # 中身は出さず、ファイル名だけ表示する。送るのは追加・変更のあったファイルだけ（upload/ に集める）
+          mkdir -p upload
+          changed=0; added=0; only_server=0
+          while read -r f; do
+            if [ ! -e "remote/$f" ]; then echo "追加: $f"; added=$((added+1))
+            elif ! cmp -s "public/$f" "remote/$f"; then echo "変更: $f"; changed=$((changed+1))
+            else continue; fi
+            mkdir -p "upload/$(dirname "$f")"; cp -p "public/$f" "upload/$f"
+          done < <(cd public && find . -type f ! -name '.DS_Store' | sed 's|^\./||' | sort)
+          while read -r f; do
+            [ -e "public/$f" ] || { echo "サーバーにだけある（消さない）: $f"; only_server=$((only_server+1)); }
+          done < <(cd remote && find . -type f | sed 's|^\./||' | sort)
+          echo "----"
+          echo "反映先: $REMOTE_DIR  追加 ${added}件 / 変更 ${changed}件 / サーバーにだけある ${only_server}件"
+          {
+            echo "### 反映先: \`$REMOTE_DIR\`"
+            echo "追加 ${added}件 / 変更 ${changed}件 / サーバーにだけある ${only_server}件（消さない）"
+            if [ "${{ inputs.dry_run }}" = "true" ]; then echo "お試しモードなので何も送っていません。"; fi
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: アップロード
+        if: inputs.dry_run == false
+        run: |
+          # 追加・変更のあったファイルだけ送る。削除はしない（--delete を付けない）
+          if [ -z "$(find upload -type f)" ]; then echo "送るファイルはありません"; exit 0; fi
+          lftp -u "$FTP_USERNAME","$FTP_PASSWORD" "$FTP_SERVER" -e "
+            set ftp:ssl-force true;
+            set ftp:ssl-protect-data true;
+            set ssl:verify-certificate yes;
+            set net:max-retries 3;
+            mirror -R --parallel=4 --verbose upload $REMOTE_DIR;
+            quit
+          "
